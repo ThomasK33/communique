@@ -63,9 +63,13 @@ impl GitHubClient {
     }
 
     pub(crate) fn with_base_url(token: String, owner_repo: &str, base_url: String) -> Result<Self> {
+        debug_assert!(!token.is_empty());
         let (owner, repo) = owner_repo
             .split_once('/')
             .ok_or_else(|| Error::GitHub(format!("invalid owner/repo: {owner_repo}")))?;
+        let base_url = base_url.trim_end_matches('/').to_string();
+        reqwest::Url::parse(&base_url)
+            .map_err(|e| Error::GitHub(format!("invalid GitHub API base URL: {e}")))?;
         let client = reqwest::Client::builder()
             .user_agent("communique/0.1")
             .build()?;
@@ -76,6 +80,15 @@ impl GitHubClient {
             repo: repo.to_string(),
             base_url,
         })
+    }
+
+    pub(crate) fn token(&self) -> &str {
+        debug_assert!(!self.token.is_empty());
+        &self.token
+    }
+
+    pub(crate) fn base_url(&self) -> reqwest::Url {
+        reqwest::Url::parse(&self.base_url).expect("GitHubClient base URL must be valid")
     }
 
     fn api_url(&self, path: &str) -> String {
